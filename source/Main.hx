@@ -1,5 +1,6 @@
 package;
 
+import funkin.ui.title.TitleState;
 import flixel.FlxGame;
 import openfl.display.FPS;
 import openfl.display.Sprite;
