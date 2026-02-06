@@ -11,8 +11,67 @@ config_version=5
 [application]
 
 config/name="FunkinDX"
+config/description="A Friday Night Funkin' engine made in Godot."
+config/version="1.0.0"
+run/main_scene="uid://dllfuq4o6i4k8"
 config/features=PackedStringArray("4.6", "Mobile")
-config/icon="res://icon.svg"
+config/icon="uid://bgjpxr68j4k8d"
+
+[autoload]
+
+InputAssigner="*res://source/funkin/input/InputAssigner.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[input]
+
+NOTE_UP={
+"deadzone": 0.2,
+"events": []
+}
+NOTE_DOWN={
+"deadzone": 0.2,
+"events": []
+}
+NOTE_LEFT={
+"deadzone": 0.2,
+"events": []
+}
+NOTE_RIGHT={
+"deadzone": 0.2,
+"events": []
+}
+UI_UP={
+"deadzone": 0.2,
+"events": []
+}
+UI_DOWN={
+"deadzone": 0.2,
+"events": []
+}
+UI_LEFT={
+"deadzone": 0.2,
+"events": []
+}
+UI_RIGHT={
+"deadzone": 0.2,
+"events": []
+}
+ACCEPT={
+"deadzone": 0.2,
+"events": []
+}
+BACK={
+"deadzone": 0.2,
+"events": []
+}
+CHEAT={
+"deadzone": 0.2,
+"events": []
+}
 
 [physics]
 
