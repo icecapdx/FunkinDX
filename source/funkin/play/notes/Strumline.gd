@@ -8,20 +8,22 @@ const NoteClass = preload("res://source/funkin/play/notes/Note.gd")
 
 var strums: Array = []
 var notes: Array = []
-var _atlas = null
+var _note_atlas = null
+var _strum_atlas = null
 var player: int = 0
 
-static func create(atlas, p_player: int = 0):
+static func create(note_atlas, strum_atlas, p_player: int = 0):
 	var script = load("res://source/funkin/play/notes/Strumline.gd")
 	var strumline = script.new()
-	strumline._atlas = atlas
+	strumline._note_atlas = note_atlas
+	strumline._strum_atlas = strum_atlas
 	strumline.player = p_player
 	strumline._setup_strums()
 	return strumline
 
 func _setup_strums() -> void:
 	for i in range(4):
-		var strum = StrumNoteClass.create(_atlas, i, player)
+		var strum = StrumNoteClass.create(_strum_atlas, i, player)
 		strum.position.x = i * NoteClass.swag_width
 		strums.append(strum)
 		add_child(strum)

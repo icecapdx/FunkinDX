@@ -45,18 +45,41 @@ func _setup_sprite() -> void:
 	add_child(_animated_sprite)
 	
 	_sprite_frames = SpriteFrames.new()
-	_sprite_frames.remove_animation("default")
+	if _sprite_frames.has_animation("default"):
+		_sprite_frames.remove_animation("default")
 	
 	var color: String = DIRECTION_COLORS[note_data]
-	var dir_name: String = DIRECTION_NAMES[note_data].to_lower()
 	
-	_atlas.add_animation_to_sprite_frames(_sprite_frames, "scroll", color + "0", 24.0, true)
+	var head_name: String = color + " instance 10000"
+	var head_frame = _atlas.get_frame(head_name)
+	if head_frame != null:
+		var head_tex = _atlas.create_atlas_texture(head_frame)
+		_sprite_frames.add_animation("scroll")
+		_sprite_frames.set_animation_speed("scroll", 0.0)
+		_sprite_frames.set_animation_loop("scroll", false)
+		_sprite_frames.add_frame("scroll", head_tex)
 	
-	var hold_end_prefix: String = color + " hold end"
+	var hold_end_name: String
 	if color == "purple":
-		hold_end_prefix = "pruple end hold"
-	_atlas.add_animation_to_sprite_frames(_sprite_frames, "hold_end", hold_end_prefix, 24.0, false)
-	_atlas.add_animation_to_sprite_frames(_sprite_frames, "hold_piece", color + " hold piece", 24.0, true)
+		hold_end_name = "pruple end hold instance 10000"
+	else:
+		hold_end_name = color + " hold end instance 10000"
+	var hold_end_frame = _atlas.get_frame(hold_end_name)
+	if hold_end_frame != null:
+		var hold_end_tex = _atlas.create_atlas_texture(hold_end_frame)
+		_sprite_frames.add_animation("hold_end")
+		_sprite_frames.set_animation_speed("hold_end", 0.0)
+		_sprite_frames.set_animation_loop("hold_end", false)
+		_sprite_frames.add_frame("hold_end", hold_end_tex)
+	
+	var hold_piece_name: String = color + " hold piece instance 10000"
+	var hold_piece_frame = _atlas.get_frame(hold_piece_name)
+	if hold_piece_frame != null:
+		var hold_piece_tex = _atlas.create_atlas_texture(hold_piece_frame)
+		_sprite_frames.add_animation("hold_piece")
+		_sprite_frames.set_animation_speed("hold_piece", 0.0)
+		_sprite_frames.set_animation_loop("hold_piece", true)
+		_sprite_frames.add_frame("hold_piece", hold_piece_tex)
 	
 	_animated_sprite.sprite_frames = _sprite_frames
 	_animated_sprite.centered = true

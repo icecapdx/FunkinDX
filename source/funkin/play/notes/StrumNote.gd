@@ -2,12 +2,10 @@
 class_name StrumNote
 extends Sprite2D
 
-const SparrowAtlasClass = preload("res://source/libs/Sparrowdot/src/sparrow/SparrowAtlas.gd")
-
 enum State { STATIC, PRESSED, CONFIRM }
 
-const DIRECTION_ARROWS: Array[String] = ["arrowLEFT", "arrowDOWN", "arrowUP", "arrowRIGHT"]
 const DIRECTION_NAMES: Array[String] = ["left", "down", "up", "right"]
+const DIRECTION_NAMES_CAP: Array[String] = ["Left", "Down", "Up", "Right"]
 
 var note_data: int = 0
 var player: int = 0
@@ -33,14 +31,15 @@ func _setup_sprite() -> void:
 	add_child(_animated_sprite)
 	
 	_sprite_frames = SpriteFrames.new()
-	_sprite_frames.remove_animation("default")
+	if _sprite_frames.has_animation("default"):
+		_sprite_frames.remove_animation("default")
 	
-	var arrow: String = DIRECTION_ARROWS[note_data]
-	var dir: String = DIRECTION_NAMES[note_data]
+	var dir_lower: String = DIRECTION_NAMES[note_data]
+	var dir_cap: String = DIRECTION_NAMES_CAP[note_data]
 	
-	_atlas.add_animation_to_sprite_frames(_sprite_frames, "static", arrow, 24.0, false)
-	_atlas.add_animation_to_sprite_frames(_sprite_frames, "pressed", dir + " press", 24.0, false)
-	_atlas.add_animation_to_sprite_frames(_sprite_frames, "confirm", dir + " confirm", 24.0, false)
+	_atlas.add_animation_to_sprite_frames(_sprite_frames, "static", "static" + dir_cap, 24.0, false)
+	_atlas.add_animation_to_sprite_frames(_sprite_frames, "pressed", "press" + dir_cap, 24.0, false)
+	_atlas.add_animation_to_sprite_frames(_sprite_frames, "confirm", "confirm" + dir_cap, 24.0, false)
 	
 	_animated_sprite.sprite_frames = _sprite_frames
 	_animated_sprite.centered = true

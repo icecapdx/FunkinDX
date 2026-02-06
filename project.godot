@@ -20,6 +20,8 @@ config/icon="uid://bgjpxr68j4k8d"
 [autoload]
 
 InputAssigner="*res://source/funkin/input/InputAssigner.gd"
+Conductor="*res://source/funkin/Conductor.gd"
+PreciseInput="*res://source/funkin/input/PreciseInputManager.gd"
 
 [display]
 
