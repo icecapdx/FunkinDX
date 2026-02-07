@@ -64,9 +64,31 @@ func get_frames_by_indices(prefix: String, indices: Array[int]) -> Array:
 			result.append(parse_result.frames_by_name[frame_name])
 	return result
 
-func create_atlas_texture(frame) -> AtlasTexture:
+var _atlas_image: Image = null
+
+func _get_atlas_image() -> Image:
+	if _atlas_image == null:
+		_atlas_image = texture.get_image()
+	return _atlas_image
+
+func create_atlas_texture(frame) -> Texture2D:
 	if _atlas_textures.has(frame.name):
 		return _atlas_textures[frame.name]
+	
+	if frame.rotated:
+		var img := _get_atlas_image()
+		var sub_img := img.get_region(Rect2i(frame.x, frame.y, frame.width, frame.height))
+		sub_img.rotate_90(COUNTERCLOCKWISE)
+		var unrotated_tex := ImageTexture.create_from_image(sub_img)
+		if frame.is_trimmed:
+			var atlas_tex := AtlasTexture.new()
+			atlas_tex.atlas = unrotated_tex
+			atlas_tex.region = Rect2(0, 0, sub_img.get_width(), sub_img.get_height())
+			atlas_tex.margin = frame.get_margin()
+			_atlas_textures[frame.name] = atlas_tex
+			return atlas_tex
+		_atlas_textures[frame.name] = unrotated_tex
+		return unrotated_tex
 	
 	var atlas_tex := AtlasTexture.new()
 	atlas_tex.atlas = texture

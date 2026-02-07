@@ -128,8 +128,8 @@ func reset() -> void:
 func force_bpm(p_bpm: float = -1.0) -> void:
 	_bpm_override = p_bpm
 
-func update(song_pos: float = -1.0, apply_offsets: bool = true) -> void:
-	if song_pos < 0:
+func update(song_pos: float = NAN, apply_offsets: bool = true) -> void:
+	if is_nan(song_pos):
 		song_pos = song_position
 	
 	if apply_offsets:

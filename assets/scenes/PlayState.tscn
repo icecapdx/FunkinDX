@@ -37,7 +37,8 @@ horizontal_alignment = 1
 [node name="PlayField" type="Node2D" parent="Game" unique_id=573744134]
 position = Vector2(107, 39)
 script = ExtResource("2_444mm")
-scroll_speed = 3.2
-song_id = "roses"
-difficulty = "nightmare"
-variation = "erect"
+scroll_speed = 2.5
+song_id = "bopeebo"
+difficulty = "hard"
+variation = "pico"
+stage_id = "mainStageErect"

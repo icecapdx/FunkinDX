@@ -7,6 +7,7 @@ const MUSIC_PATH := "res://assets/music"
 const SOUNDS_PATH := "res://assets/sounds"
 const IMAGES_PATH := "res://assets/images"
 const DATA_PATH := "res://assets/data"
+const STAGES_PATH := "res://assets/data/stages"
 
 const EXT_SOUND := "ogg"
 const EXT_IMAGE := "png"
@@ -166,6 +167,53 @@ static func build_voice_list(song: String, characters: Dictionary, variation: St
 				result["player"].append(fallback_path)
 	
 	return result
+
+static func stage_data(stage_id: String) -> String:
+	var path := "%s/%s.json" % [STAGES_PATH, stage_id]
+	if file_exists(path):
+		return path
+	return ""
+
+static func stage_image(asset_path: String, directory: String = "shared") -> String:
+	var dir_path := "res://assets/%s/images/%s.png" % [directory, asset_path]
+	if file_exists(dir_path):
+		return dir_path
+	var images_path := "%s/%s.png" % [IMAGES_PATH, asset_path]
+	if file_exists(images_path):
+		return images_path
+	var shared_path := "res://assets/shared/images/%s.png" % asset_path
+	if file_exists(shared_path):
+		return shared_path
+	return ""
+
+static func character_data(char_id: String) -> String:
+	var path := "%s/characters/%s.json" % [DATA_PATH, char_id]
+	if file_exists(path):
+		return path
+	path = "res://assets/data/characters/%s.json" % char_id
+	if file_exists(path):
+		return path
+	return ""
+
+static func character_asset_path(raw_path: String) -> String:
+	if ":" in raw_path:
+		var parts := raw_path.split(":", true, 1)
+		var library: String = parts[0]
+		var sub_path: String = parts[1]
+		var dir_path := "res://assets/%s/images/%s" % [library, sub_path]
+		if DirAccess.dir_exists_absolute(dir_path):
+			return dir_path
+		dir_path = "res://assets/images/%s" % sub_path
+		if DirAccess.dir_exists_absolute(dir_path):
+			return dir_path
+		return "res://assets/%s/images/%s" % [library, sub_path]
+	var dir_path := "res://assets/shared/images/%s" % raw_path
+	if DirAccess.dir_exists_absolute(dir_path):
+		return dir_path
+	dir_path = "res://assets/images/%s" % raw_path
+	if DirAccess.dir_exists_absolute(dir_path):
+		return dir_path
+	return "res://assets/shared/images/%s" % raw_path
 
 static func get_inst_path(song: String, instrumental_id: String = "", variation: String = "") -> String:
 	var suffix := ""

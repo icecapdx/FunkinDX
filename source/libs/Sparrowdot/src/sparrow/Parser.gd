@@ -14,22 +14,31 @@ class FrameData:
 	var frame_width: int
 	var frame_height: int
 	var is_trimmed: bool
+	var rotated: bool = false
 	
 	func get_region() -> Rect2i:
 		return Rect2i(x, y, width, height)
 	
+	func get_logical_size() -> Vector2i:
+		if rotated:
+			return Vector2i(height, width)
+		return Vector2i(width, height)
+	
 	func get_margin() -> Rect2i:
 		if not is_trimmed:
 			return Rect2i(0, 0, 0, 0)
+		var ls := get_logical_size()
 		var left := -frame_x
 		var top := -frame_y
-		var right := frame_width - width - left
-		var bottom := frame_height - height - top
+		var right := frame_width - ls.x - left
+		var bottom := frame_height - ls.y - top
 		return Rect2i(left, top, right, bottom)
 	
 	func get_original_size() -> Vector2i:
 		if is_trimmed:
 			return Vector2i(frame_width, frame_height)
+		if rotated:
+			return Vector2i(height, width)
 		return Vector2i(width, height)
 
 class ParseResult:
@@ -61,6 +70,7 @@ static func parse_xml(xml):
 		frame.y = subtexture.get_attribute_int("y")
 		frame.width = subtexture.get_attribute_int("width")
 		frame.height = subtexture.get_attribute_int("height")
+		frame.rotated = subtexture.get_attribute("rotated", "false") == "true"
 		
 		if subtexture.attributes.has("frameX"):
 			frame.is_trimmed = true
@@ -72,8 +82,9 @@ static func parse_xml(xml):
 			frame.is_trimmed = false
 			frame.frame_x = 0
 			frame.frame_y = 0
-			frame.frame_width = frame.width
-			frame.frame_height = frame.height
+			var ls := frame.get_logical_size()
+			frame.frame_width = ls.x
+			frame.frame_height = ls.y
 		
 		result.frames.append(frame)
 		result.frames_by_name[frame.name] = frame
