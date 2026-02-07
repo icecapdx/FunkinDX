@@ -124,7 +124,11 @@ var _hud_bop_zoom: float = 0.0
 
 var _song_started: bool = false
 var _song_paused: bool = false
+var _is_in_countdown: bool = false
+var _countdown_step: int = -1
+var _countdown_timer: Timer = null
 
+const COUNTDOWN_VOLUME: float = 0.6
 const RESYNC_THRESHOLD: float = 40.0
 
 func _ready() -> void:
@@ -791,27 +795,141 @@ func start_song(from_position: float = 0.0) -> void:
 		push_error("[Audio] Cannot start song - no audio manager")
 		return
 
-	var start_pos: float = from_position
 	if start_countdown:
-		start_pos = countdown_offset
+		_perform_countdown()
+		return
 
 	_song_started = true
 	_song_paused = false
 
-	print("[Audio] Starting song at position: %.2f ms (countdown: %s)" % [start_pos, start_countdown])
+	if _conductor:
+		_conductor.update(from_position, false)
 
+	_song_audio.play(from_position)
+
+func _perform_countdown() -> void:
+	var beat_length: float = 600.0
+	if _conductor:
+		beat_length = _conductor.beat_length_ms
+
+	_countdown_step = -1
+	_is_in_countdown = true
+	_song_started = true
+	_song_paused = false
+
+	var start_pos := beat_length * -5.0
 	if _conductor:
 		_conductor.update(start_pos, false)
 
-	if start_pos >= 0:
-		_song_audio.play(start_pos)
+	_countdown_timer = Timer.new()
+	_countdown_timer.wait_time = beat_length / 1000.0
+	_countdown_timer.one_shot = false
+	add_child(_countdown_timer)
+
+	_countdown_timer.timeout.connect(_on_countdown_tick)
+	_countdown_timer.start()
+
+func _on_countdown_tick() -> void:
+	_countdown_step += 1
+
+	_play_countdown_sound(_countdown_step)
+	_show_countdown_graphic(_countdown_step)
+
+	if _countdown_step >= 4:
+		_is_in_countdown = false
+		if _countdown_timer:
+			_countdown_timer.stop()
+			_countdown_timer.queue_free()
+			_countdown_timer = null
+		if _song_audio:
+			_song_audio.play(0.0)
+
+func _get_countdown_note_style() -> String:
+	if _current_song:
+		var meta = _current_song.get_metadata(variation)
+		if meta and meta.play_data:
+			return meta.play_data.note_style
+	return "funkin"
+
+func _play_countdown_sound(step: int) -> void:
+	var sound_name: String = ""
+	match step:
+		0:
+			sound_name = "introTHREE"
+		1:
+			sound_name = "introTWO"
+		2:
+			sound_name = "introONE"
+		3:
+			sound_name = "introGO"
+		_:
+			return
+
+	var ns := _get_countdown_note_style()
+	var sound_path := "res://assets/sounds/gameplay/countdown/%s/%s.ogg" % [ns, sound_name]
+	if not ResourceLoader.exists(sound_path):
+		sound_path = "res://assets/sounds/gameplay/countdown/funkin/%s.ogg" % sound_name
+	if not ResourceLoader.exists(sound_path):
+		return
+
+	var audio := AudioStreamPlayer.new()
+	audio.stream = load(sound_path)
+	audio.volume_db = linear_to_db(COUNTDOWN_VOLUME)
+	add_child(audio)
+	audio.play()
+	audio.finished.connect(audio.queue_free)
+
+func _show_countdown_graphic(step: int) -> void:
+	var graphic_name: String = ""
+	match step:
+		1:
+			graphic_name = "ready"
+		2:
+			graphic_name = "set"
+		3:
+			graphic_name = "go"
+		_:
+			return
+
+	var ns := _get_countdown_note_style()
+	var is_pixel := ns == "pixel"
+	var img_path := "res://assets/images/ui/countdown/%s/%s.png" % [ns, graphic_name]
+	if not ResourceLoader.exists(img_path):
+		img_path = "res://assets/images/ui/countdown/funkin/%s.png" % graphic_name
+	if not ResourceLoader.exists(img_path):
+		return
+
+	var tex: Texture2D = load(img_path)
+	if tex == null:
+		return
+
+	var overlay := CanvasLayer.new()
+	overlay.layer = 100
+	add_child(overlay)
+
+	var sprite := Sprite2D.new()
+	sprite.texture = tex
+	sprite.centered = true
+	if is_pixel:
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		sprite.scale = Vector2(6.0, 6.0)
+
+	var viewport_size := get_viewport_rect().size
+	sprite.position = viewport_size / 2.0
+	overlay.add_child(sprite)
+
+	var beat_length: float = 600.0
+	if _conductor:
+		beat_length = _conductor.beat_length_ms
+	var fade_duration: float = beat_length / 1000.0
+
+	var tween := create_tween()
+	if is_pixel:
+		tween.set_trans(Tween.TRANS_LINEAR)
 	else:
-		print("[Audio] Waiting %.2f seconds for countdown..." % (absf(start_pos) / 1000.0))
-		get_tree().create_timer(absf(start_pos) / 1000.0).timeout.connect(func():
-			if _song_started and not _song_paused:
-				print("[Audio] Countdown finished, playing audio")
-				_song_audio.play(0.0)
-		)
+		tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(sprite, "modulate:a", 0.0, fade_duration)
+	tween.tween_callback(overlay.queue_free)
 
 func pause_song() -> void:
 	if not _song_started:
