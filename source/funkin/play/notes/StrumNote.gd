@@ -15,7 +15,7 @@ var _atlas = null
 var _sprite_frames: SpriteFrames = null
 var _animated_sprite: AnimatedSprite2D = null
 
-var confirm_offset: Vector2 = Vector2(-13, -13)
+var _anim_positions: Dictionary = {}
 
 static func create(atlas, p_note_data: int, p_player: int = 0):
 	var script = load("res://source/funkin/play/notes/StrumNote.gd")
@@ -42,31 +42,48 @@ func _setup_sprite() -> void:
 	_atlas.add_animation_to_sprite_frames(_sprite_frames, "confirm", "confirm" + dir_cap, 24.0, false)
 	
 	_animated_sprite.sprite_frames = _sprite_frames
-	_animated_sprite.centered = true
+	_animated_sprite.centered = false	
+	_compute_anim_positions()
 	
 	scale = Vector2(0.7, 0.7)
+	_state = -1
 	play_static()
+
+func _compute_anim_positions() -> void:
+	for anim_name in ["static", "pressed", "confirm"]:
+		if not _sprite_frames.has_animation(anim_name):
+			continue
+		var tex: Texture2D = _sprite_frames.get_frame_texture(anim_name, 0)
+		if tex != null and tex is AtlasTexture:
+			var at: AtlasTexture = tex as AtlasTexture
+			var content_center: Vector2 = Vector2(at.margin.position) + Vector2(at.region.size) / 2.0
+			_anim_positions[anim_name] = -content_center
+		else:
+			if tex != null:
+				_anim_positions[anim_name] = -Vector2(tex.get_width(), tex.get_height()) / 2.0
+			else:
+				_anim_positions[anim_name] = Vector2.ZERO
 
 func play_static() -> void:
 	if _state == State.STATIC:
 		return
 	_state = State.STATIC
 	_animated_sprite.play("static")
-	_animated_sprite.offset = Vector2.ZERO
+	_animated_sprite.position = _anim_positions.get("static", Vector2.ZERO)
 
 func play_pressed() -> void:
 	if _state == State.PRESSED:
 		return
 	_state = State.PRESSED
 	_animated_sprite.play("pressed")
-	_animated_sprite.offset = Vector2.ZERO
+	_animated_sprite.position = _anim_positions.get("pressed", Vector2.ZERO)
 
 func play_confirm() -> void:
 	if _state == State.CONFIRM:
 		return
 	_state = State.CONFIRM
 	_animated_sprite.play("confirm")
-	_animated_sprite.offset = confirm_offset
+	_animated_sprite.position = _anim_positions.get("confirm", Vector2.ZERO)
 
 func get_state() -> int:
 	return _state

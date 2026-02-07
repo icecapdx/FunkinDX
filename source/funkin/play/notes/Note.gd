@@ -21,6 +21,7 @@ var was_good_hit: bool = false
 var sustain_length: float = 0.0
 var is_sustain_note: bool = false
 var prev_note = null
+var sustain_trail = null
 
 var note_score: float = 1.0
 

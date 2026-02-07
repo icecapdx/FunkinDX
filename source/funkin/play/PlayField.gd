@@ -5,6 +5,7 @@ extends Node2D
 const SparrowAtlasClass = preload("res://source/libs/Sparrowdot/src/sparrow/SparrowAtlas.gd")
 const StrumlineClass = preload("res://source/funkin/play/notes/Strumline.gd")
 const NoteClass = preload("res://source/funkin/play/notes/Note.gd")
+const SustainTrailClass = preload("res://source/funkin/play/notes/SustainTrail.gd")
 const ChartParserClass = preload("res://source/funkin/data/song/ChartParser.gd")
 const SongDataClass = preload("res://source/funkin/data/song/SongData.gd")
 const SongAudioClass = preload("res://source/funkin/audio/SongAudio.gd")
@@ -86,6 +87,7 @@ var opponent_strumline = null
 
 var unspawned_notes: Array = []
 var active_notes: Array = []
+var active_sustains: Array = []
 var unspawned_events: Array = []
 
 const NOTE_ACTIONS: Array[String] = ["NOTE_LEFT", "NOTE_DOWN", "NOTE_UP", "NOTE_RIGHT"]
@@ -130,6 +132,7 @@ func _setup_gameplay() -> void:
 	if _precise_input:
 		_precise_input.initialize_keys()
 		_precise_input.input_pressed.connect(_on_precise_input_pressed)
+		_precise_input.input_released.connect(_on_precise_input_released)
 	
 	if has_node("/root/InputAssigner"):
 		get_node("/root/InputAssigner").bindings_changed.connect(_on_bindings_changed)
@@ -154,6 +157,9 @@ func _on_bindings_changed() -> void:
 
 func _on_precise_input_pressed(event) -> void:
 	_on_key_pressed_precise(event.direction, event.timestamp)
+
+func _on_precise_input_released(event) -> void:
+	_on_key_released_precise(event.direction, event.timestamp)
 
 func _refresh_editor_preview() -> void:
 	_clear_children()
@@ -348,10 +354,20 @@ func _load_notes_from_song() -> void:
 			note_data.time,
 			direction,
 			prev_note,
-			length > 0
+			false
 		)
 		note.must_press = is_player
 		note.sustain_length = length
+		
+		if length > 0:
+			var sustain_trail = SustainTrailClass.create(
+				_atlas,
+				note_data.time,
+				direction,
+				length
+			)
+			sustain_trail.must_press = is_player
+			note.sustain_trail = sustain_trail
 		
 		unspawned_notes.append(note)
 		prev_note = note
@@ -552,6 +568,10 @@ func _spawn_upcoming_notes() -> void:
 			
 			var strumline = player_strumline if note.must_press else opponent_strumline
 			strumline.add_note(note)
+			
+			if note.sustain_trail != null:
+				strumline.add_child(note.sustain_trail)
+				note.sustain_trail.position = note.position
 		else:
 			break
 
@@ -563,16 +583,40 @@ func _update_notes() -> void:
 		var y_offset: float = (pos - note.strum_time) * (0.45 * scroll_speed)
 		note.position.y = -y_offset
 		
+		if note.sustain_trail != null:
+			note.sustain_trail.position.x = note.position.x
+			note.sustain_trail.position.y = note.position.y
+			var note_height: float = 157.0 * note.scale.y
+			note.sustain_trail.position.y += note_height / 2
+			note.sustain_trail.update_clipping(pos, scroll_speed)
+		
 		if note.must_press:
 			_update_player_note(note, pos)
 		else:
 			_update_opponent_note(note, pos)
 		
 		if note.position.y < -note.get_rect().size.y - 100:
-			notes_to_remove.append(note)
+			if note not in active_sustains:
+				notes_to_remove.append(note)
+	
+	for sustain_note in active_sustains:
+		if not is_instance_valid(sustain_note) or sustain_note.sustain_trail == null:
+			continue
+		
+		var strumline = player_strumline if sustain_note.must_press else opponent_strumline		
+		sustain_note.sustain_trail.position.x = sustain_note.note_data * NoteClass.swag_width
+		sustain_note.sustain_trail.position.y = 0  # At the strumline
+		
+		var elapsed: float = pos - sustain_note.strum_time
+		var remaining: float = sustain_note.sustain_length - elapsed
+		if remaining > 0:
+			sustain_note.sustain_trail.sustain_length = remaining
+			sustain_note.sustain_trail.update_clipping(pos, scroll_speed)
+			sustain_note.sustain_trail.visible = true
 	
 	for note in notes_to_remove:
-		_remove_note(note)
+		_remove_note(note)	
+	_update_sustains(pos)
 
 func _update_player_note(note, pos: float) -> void:
 	var diff: float = note.strum_time - pos
@@ -594,15 +638,35 @@ func _update_opponent_note(note, pos: float) -> void:
 		
 		opponent_strumline.confirm_strum(direction)
 		
-		get_tree().create_timer(0.15).timeout.connect(func():
-			opponent_strumline.release_strum(direction)
-		)
-		
-		_remove_note(note)
+		if note.sustain_length > 0 and note.sustain_trail != null:
+			note.sustain_trail.hit_note = true
+			active_sustains.append(note)
+			note.visible = false
+			var sustain_end_time: float = note.strum_time + note.sustain_length
+			var captured_direction: int = direction
+			var captured_note = note
+			get_tree().create_timer((sustain_end_time - pos) / 1000.0).timeout.connect(func():
+				opponent_strumline.release_strum(captured_direction)
+				if is_instance_valid(captured_note):
+					_remove_note(captured_note)
+			)
+		else:
+			get_tree().create_timer(0.15).timeout.connect(func():
+				opponent_strumline.release_strum(direction)
+			)
+			_remove_note(note)
 
 func _remove_note(note) -> void:
+	if not is_instance_valid(note):
+		return
+	
 	active_notes.erase(note)
-	note.queue_free()
+	active_sustains.erase(note)
+	if is_instance_valid(note) and note.sustain_trail != null:
+		if is_instance_valid(note.sustain_trail):
+			note.sustain_trail.queue_free()
+	if is_instance_valid(note):
+		note.queue_free()
 
 func _handle_strum_visuals() -> void:
 	if not _precise_input:
@@ -652,7 +716,21 @@ func _good_note_hit(note, timing_diff: float = 0.0) -> void:
 	
 	player_strumline.confirm_strum(direction)
 	
-	_remove_note(note)
+	if note.sustain_length > 0 and note.sustain_trail != null:
+		note.sustain_trail.hit_note = true
+		active_sustains.append(note)
+		note.visible = false
+		var pos: float = get_song_position()
+		note.sustain_trail.position.x = note.note_data * NoteClass.swag_width
+		note.sustain_trail.position.y = 0
+		note.sustain_trail.visible = true
+		var elapsed: float = pos - note.strum_time
+		var remaining: float = note.sustain_length - elapsed
+		if remaining > 0:
+			note.sustain_trail.sustain_length = remaining
+			note.sustain_trail.update_clipping(pos, scroll_speed)
+	else:
+		_remove_note(note)
 	
 	var rating: String = _get_timing_rating(timing_diff)
 	print("Hit! Direction: %s, Timing: %.2fms (%s)" % [dir_name, timing_diff, rating])
@@ -667,3 +745,53 @@ func _get_timing_rating(diff: float) -> String:
 		return "Bad"
 	else:
 		return "Shit"
+
+func _on_key_released_precise(direction: int, timestamp: int) -> void:
+	var pos: float = get_song_position()
+	for sustain_note in active_sustains:
+		if not is_instance_valid(sustain_note) or sustain_note == null:
+			continue
+		if sustain_note.note_data == direction and sustain_note.sustain_trail != null:
+			if sustain_note.sustain_trail.hit_note and not sustain_note.sustain_trail.missed_note:
+				var elapsed: float = pos - sustain_note.strum_time
+				if elapsed < sustain_note.sustain_length:
+					sustain_note.sustain_trail.missed_note = true
+					player_strumline.release_strum(direction)
+					print("Sustain released early! Direction: %s" % NoteClass.DIRECTION_NAMES[direction])
+
+func _update_sustains(pos: float) -> void:
+	var sustains_to_remove: Array = []
+	
+	for sustain_note in active_sustains:
+		if not is_instance_valid(sustain_note) or sustain_note == null:
+			sustains_to_remove.append(sustain_note)
+			continue
+		
+		if sustain_note.sustain_trail == null:
+			sustains_to_remove.append(sustain_note)
+			continue
+		
+		var elapsed: float = pos - sustain_note.strum_time
+		
+		if elapsed >= sustain_note.sustain_length:
+			if sustain_note.sustain_trail.hit_note and not sustain_note.sustain_trail.missed_note:
+				player_strumline.release_strum(sustain_note.note_data)
+				print("Sustain completed! Direction: %s" % sustain_note.get_direction_name())
+			sustains_to_remove.append(sustain_note)
+			continue
+		
+		if sustain_note.must_press and _precise_input:
+			var direction: int = sustain_note.note_data
+			if _precise_input.is_pressed(direction):
+				sustain_note.sustain_trail.hit_note = true
+				sustain_note.sustain_trail.missed_note = false
+			elif sustain_note.sustain_trail.hit_note and not sustain_note.sustain_trail.missed_note:
+				sustain_note.sustain_trail.missed_note = true
+				player_strumline.release_strum(direction)
+				print("Sustain dropped! Direction: %s" % sustain_note.get_direction_name())
+	
+	for sustain_note in sustains_to_remove:
+		if is_instance_valid(sustain_note):
+			_remove_note(sustain_note)
+		else:
+			active_sustains.erase(sustain_note)
