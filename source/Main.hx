@@ -3,6 +3,7 @@ package;
 import flixel.FlxGame;
 import openfl.display.FPS;
 import openfl.display.Sprite;
+import meta.state.TitleState;
 
 class Main extends Sprite
 {
