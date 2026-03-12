@@ -44,11 +44,6 @@ using StringTools;
 
 class PlayState extends MusicBeatState implements IGameplayInputHandler
 {
-	static inline var JUDGEMENT_MARV:Float = 16;
-	static inline var JUDGEMENT_PERF:Float = 43;
-	static inline var JUDGEMENT_GREAT:Float = 76;
-	static inline var JUDGEMENT_GOOD:Float = 106;
-	static inline var JUDGEMENT_OKAY:Float = 127;
 	static inline var JUDGEMENT_MISS:Float = 164;
 
 	public static var curStage:String = '';
@@ -1696,35 +1691,20 @@ class PlayState extends MusicBeatState implements IGameplayInputHandler
 
 		var daRating:String = "sick";
 
-		if (noteDiff <= JUDGEMENT_MARV)
-		{
-			daRating = 'sick';
-			score = 350;
-		}
-		else if (noteDiff <= JUDGEMENT_PERF)
-		{
-			daRating = 'good';
-			score = 300;
-		}
-		else if (noteDiff <= JUDGEMENT_GREAT)
-		{
-			daRating = 'good';
-			score = 250;
-		}
-		else if (noteDiff <= JUDGEMENT_GOOD)
-		{
-			daRating = 'bad';
-			score = 150;
-		}
-		else if (noteDiff <= JUDGEMENT_OKAY)
-		{
-			daRating = 'shit';
-			score = 100;
-		}
-		else
+		if (noteDiff > Conductor.safeZoneOffset * 0.9)
 		{
 			daRating = 'shit';
 			score = 50;
+		}
+		else if (noteDiff > Conductor.safeZoneOffset * 0.75)
+		{
+			daRating = 'bad';
+			score = 100;
+		}
+		else if (noteDiff > Conductor.safeZoneOffset * 0.2)
+		{
+			daRating = 'good';
+			score = 200;
 		}
 
 		songScore += score;
